@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Don't forget the CSS!
 import { toast } from "react-toastify";
-import { supabase } from "../supabaseClient";
+import { supabase, supabaseAdmin } from "../supabaseClient";
 // --- CONFIGURATION ---
 const MQTT_CONFIG = {
   // HiveMQ Cloud WebSocket URL (Must start with wss:// and end with /mqtt)
@@ -19,6 +19,7 @@ const MQTT_CONFIG = {
 const RegistrationPage = () => {
   const [studentName, setStudentName] = useState("");
   const [parentEmail, setParentEmail] = useState("");
+  const [parentPhone, setParentPhone] = useState(""); // Independent state for easier clearing
   const [loading, setLoading] = useState(false);
   const [client, setClient] = useState(null);
   const [connectStatus, setConnectStatus] = useState("Connecting...");
@@ -29,6 +30,8 @@ const RegistrationPage = () => {
     name: "",
     id: "",
     bal: "",
+    gender: "",
+    class: "",
     rfid: "", // This will be populated by the ESP32 scan
   });
   const [status, setStatus] = useState("Scan Card...");
@@ -89,7 +92,7 @@ const RegistrationPage = () => {
       .from("students")
       .select("name")
       .eq("rfid_uid", rfidUid)
-      .single();
+      .maybeSingle();
 
     if (data) {
       // If data exists, the card is already taken
@@ -98,38 +101,41 @@ const RegistrationPage = () => {
     return { exists: false };
   };
 
+  // ---- Main Registration Logic -----
   const handleRegister = async (e) => {
     e.preventDefault();
-    setLoading(true); // Always set loading to true at start
-    // 1. Check if the card is already in the Cloud
-    const isDuplicate = await checkDuplicateCard(studentData.rfid);
-    if (isDuplicate.exists) {
-      toast.error(
-        `Error: This card is already assigned to ${isDuplicate.owner}!`,
-      );
-      return; // STOP the registration here
-    }
-    // 1. Validation
+
     if (!studentData.rfid) {
       toast.warning("Please scan an RFID tag first!");
       return;
     }
 
-    if (!studentData.name || !studentData.id) {
+    if (!studentData.name || !studentData.id || !parentEmail || !parentPhone) {
       toast.warning("Please fill in the Name and ID!");
       return;
     }
+    setLoading(true); // Always set loading to true at start
 
     try {
+      // 1. Check if the card is already assigned
+      const isDuplicate = await checkDuplicateCard(studentData.rfid);
+      if (isDuplicate.exists) {
+        // Use THROW instead of RETURN to ensure 'finally' block runs
+        throw new Error(
+          `This card is already assigned to ${isDuplicate.owner}!`,
+        );
+      }
+
       let parentUid;
+      const cleanEmail = parentEmail.toLowerCase().trim();
 
       // 1. Check if Parent already exists in your database
-      // We check the 'profiles' table we created earlier
       const { data: existingParent, error: searchError } = await supabase
         .from("profiles")
         .select("id")
-        .eq("email", parentEmail.toLowerCase().trim())
-        .maybeSingle()
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
       if (searchError) throw new Error("Search Error: " + searchError.message);
 
       if (existingParent) {
@@ -137,21 +143,36 @@ const RegistrationPage = () => {
         toast.info("Existing parent found. Linking student...");
       } else {
         // 2. Create NEW Parent Auth Account
-        const { data: authData, error: authError } = await supabase.auth.signUp(
-          {
-            email: parentEmail.toLowerCase().trim(),
-            password: "password", // They can reset this later
-            options: { data: { role: "parent" }, initializeSession: false },
-          },
-        );
+        toast.info("Creating new parent account...");
+        const { data: authData, error: authError } =
+          await supabaseAdmin.auth.admin.createUser({
+            email: cleanEmail,
+            password: "password123", // Default password
+            email_confirm: true, // Bypasses email verification
+            user_metadata: {
+              role: "parent",
+              phone: parentPhone,
+            },
+            // email: cleanEmail,
+            // password: "password123", // They can reset this later
+            // options: { data: { role: "parent" }, initializeSession: false },
+          });
 
         if (authError) throw authError;
         parentUid = authData.user.id;
 
-        // 3. Create the Parent Profile record
-        // await supabase.from('profiles').insert([
-        //   { id: parentUid, email: parentEmail, role: 'parent' }
-        // ]);
+        // 2. MANUAL PROFILE CREATION (Now that Trigger is gone)
+        const { error: profileError } = await supabase.from("profiles").insert([
+          {
+            id: parentUid,
+            email: cleanEmail,
+            phone: parentPhone,
+            role: "parent",
+          },
+        ]);
+
+        if (profileError)
+          throw new Error("Could not create profile: " + profileError.message);
       }
 
       // 2. SAVE STUDENT
@@ -161,6 +182,10 @@ const RegistrationPage = () => {
           rfid_uid: studentData.rfid,
           student_id: studentData.id,
           parent_id: parentUid,
+          parent_email: cleanEmail,
+          parent_phone: parentPhone,
+          gender: studentData.gender,
+          class: studentData.class,
           registration_date: formattedDate, // Your d/m/y format
           balance: 0, // New students always start at 0
         },
@@ -197,8 +222,9 @@ const RegistrationPage = () => {
       setStatus("Registration successful!");
 
       // 5. CLEAR FORM
-      setStudentData({ date: "", name: "", id: "", balance: "", rfid: "" });
+      setStudentData({ date: "", name: "", id: "", balance: "", rfid: "", gender: "", class: "" });
       setParentEmail("");
+      setParentPhone("");
     } catch (err) {
       console.error(err);
       toast.error(err.message || "An unexpected error occurred.");
@@ -211,101 +237,179 @@ const RegistrationPage = () => {
     <>
       <div className="min-h-screen pt-20 md:pt-30">
         <ToastContainer position="top-center" autoClose={2500} />
-
         {/* <div className="text-center text-emerald-500">{status}</div> */}
         <form
           onSubmit={handleRegister}
-          className="max-w-md mx-auto p-5 md:p-6 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-4  shadow-emerald-900/5"
+          className="max-w-md mx-auto p-6 md:p-8 bg-white rounded-3xl shadow-xl shadow-emerald-900/5 border border-slate-100 space-y-4"
         >
-          <div class="space-y-1 border-emerald-100 rounded-2xl ">
-            <label class="text-sm font-medium text-emerald-900 shadow-xl shadow-emerald-900/5">
-              Student Full Name
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Daniel Smith"
-              required
-              className="w-full border-emerald-200  border-emerald-200 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-              value={studentData.name}
-              onChange={(e) =>
-                setStudentData({ ...studentData, name: e.target.value })
-              }
-            />
-          </div>
-          {/* Parent Info */}
-          <div class="space-y-1 border-emerald-100 rounded-2xl ">
-            <label class="text-sm font-medium text-emerald-900 shadow-xl shadow-emerald-900/5">
-              Parent Email Addres
-            </label>
-            <input
-              type="email"
-              placeholder="parentemail@gmail.com"
-              required
-              className="w-full border-emerald-200  border-emerald-200 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-              onChange={(e) => setParentEmail(e.target.value)}
-            />
-          </div>
-
-          <div class="space-y-1">
-            <label class="text-sm font-medium text-emerald-900">
-              School ID Number
-            </label>
-            <input
-              type="text"
-              placeholder="ID-00000"
-              required
-              className="w-full border-emerald-200 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-              value={studentData.id}
-              onChange={(e) =>
-                setStudentData({ ...studentData, id: e.target.value })
-              }
-            />
-          </div>
-          {/* <div class="space-y-1">
-            <label class="text-sm font-medium text-emerald-900">Amount</label>
-            <input
-              type="text"
-              placeholder="₦ 5000.00"
-              required
-              className="w-full border-emerald-200 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-              value={studentData.balance}
-              onChange={(e) =>
-                setStudentData({ ...studentData, balance: e.target.value })
-              }
-            />
-          </div> */}
-
-          <div class="space-y-1">
-            <label class="text-sm font-medium text-slate-800">RFID UID</label>
-            <input
-              type="text"
-              placeholder="Scan card now..."
-              value={studentData.rfid}
-              readOnly
-              className="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-200 text-slate-500 cursor-not-allowed italic"
-            />
-            <p class="text-xs text-slate-400">
-              Card detection is automatic when scanning.
+          <div className="text-center pb-2">
+            <h2 className="text-2xl font-black text-emerald-900 tracking-tight">
+              Student Enrollment
+            </h2>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">
+              HezTec HPay Systems
             </p>
+          </div>
+
+          {/* --- SECTION: Student Identity --- */}
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase ml-1">
+                Full Name
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Enter Student Name"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50/50 transition-all"
+                value={studentData.name}
+                onChange={(e) =>
+                  setStudentData({ ...studentData, name: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase ml-1">
+                  School ID
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ID-000"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50/50"
+                  value={studentData.id}
+                  onChange={(e) =>
+                    setStudentData({ ...studentData, id: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase ml-1">
+                  Class/Level
+                </label>
+                <select
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50/50 text-slate-700"
+                  value={studentData.class || ""}
+                  onChange={(e) =>
+                    setStudentData({ ...studentData, class: e.target.value })
+                  }
+                >
+                  <option value="" disabled>
+                    Select
+                  </option>
+                  <option value="JSS 1">JSS 1</option>
+                  <option value="JSS 2">JSS 2</option>
+                  <option value="JSS 3">JSS 3</option>
+                  <option value="SSS 1">SSS 1</option>
+                  <option value="SSS 2">SSS 2</option>
+                  <option value="SSS 3">SSS 3</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* --- SECTION: Parent & Communication --- */}
+          <div className="pt-2 space-y-3 border-t border-slate-50">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase ml-1">
+                  Gender
+                </label>
+                <select
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50/50"
+                  value={studentData.gender || ""}
+                  onChange={(e) =>
+                    setStudentData({ ...studentData, gender: e.target.value })
+                  }
+                >
+                  <option value="" disabled>
+                    Select
+                  </option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase ml-1">
+                  Parent Phone
+                </label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="0813..."
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50/50"
+                  value={parentPhone}
+                  onChange={(e) => setParentPhone(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase ml-1">
+                Parent Email
+              </label>
+              <input
+                type="email"
+                required
+                placeholder="guardian@email.com"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50/50"
+                value={parentEmail}
+                onChange={(e) => setParentEmail(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* --- SECTION: Hardware Integration --- */}
+          <div className="pt-2 space-y-1">
+            <label className="text-xs font-bold text-slate-800 uppercase ml-1 flex items-center justify-between">
+              RFID Tag UID
+              {studentData.rfid ? (
+                <span className="text-emerald-600 font-black animate-pulse flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                  Ready
+                </span>
+              ) : (
+                <span className="text-slate-400 font-normal lowercase italic">
+                  waiting for scan...
+                </span>
+              )}
+            </label>
+            <input
+              type="text"
+              readOnly
+              placeholder="Scan card on ESP32..."
+              value={studentData.rfid}
+              className={`w-full px-4 py-3 rounded-xl border font-mono text-sm transition-all duration-500 ${
+                studentData.rfid
+                  ? "bg-emerald-50 border-emerald-400 text-emerald-700 font-bold shadow-inner"
+                  : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed italic"
+              }`}
+            />
           </div>
 
           <button
             type="submit"
-            disabled={loading} // Disable while processing
-            className={`w-full cursor-pointer mt-2 font-semibold py-2.5 px-4 rounded-lg shadow-md transition-colors ${
-              loading ? "bg-slate-400" : "bg-emerald-600 hover:bg-emerald-700"
-            } text-white`}
+            disabled={loading || !studentData.rfid}
+            className={`w-full mt-2 font-black py-4 rounded-2xl shadow-lg cursor-pointer transition-all active:scale-[0.98] ${
+              loading || !studentData.rfid
+                ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 hover:shadow-emerald-300/50"
+            }`}
           >
-            {loading ? "Registering..." : "Complete Registration"}
+            {loading ? (
+              <div className="flex items-center justify-center gap-2 ">
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ENROLLING...
+              </div>
+            ) : (
+              "REGISTER STUDENT"
+            )}
           </button>
-          {/* <button
-            type="submit"
-            disabled={loading}
-            className="w-full cursor-pointer mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md shadow-emerald-100 transition-colors active:scale-[0.98]"
-          >
-            Complete Registration
-          </button> */}
-        </form>
+        </form>{" "}
       </div>
     </>
   );

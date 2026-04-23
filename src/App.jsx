@@ -8,6 +8,8 @@ import StudentList from "../pages/StudentList.jsx";
 import Landing from "../pages/Landing.jsx";
 import AdminDashboard from "../pages/AdminDashboard.jsx";
 import Transactions from "../pages/Transactions.jsx";
+import UpdatePassword from "../pages/UpdatePassword.jsx";
+import ForgotPassword from "../pages/ForgotPassword.jsx";
 
 // Components
 import Login from "../components/Login.jsx";
@@ -17,6 +19,7 @@ import MobileHeader from "../components/MobileHeader.jsx";
 import Footer from "../components/Footer.jsx";
 import ScrollToTop from "../components/ScrollToTop.jsx";
 import Settings from "../components/Settings.jsx";
+
 
 import mqtt from "mqtt";
 import { ToastContainer } from "react-toastify";
@@ -187,6 +190,8 @@ const App = () => {
                 )
               }
             />
+            <Route path="/forgot-password" element={<ForgotPassword/>}/>
+            <Route path="/update-password" element={<UpdatePassword/>}/>
             <Route path="/settings" element={<Settings role={role} />} />
             {/* Protected Admin Routes */}
             <Route
