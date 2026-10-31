@@ -26,7 +26,7 @@ const MobileNav = ({role}) => {
   const isAdmin = role === 'admin';
   return (
     <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50">
-      <div className="bg-emerald-950/90 backdrop-blur-lg border border-emerald-800 rounded-2xl px-6 py-2 shadow-2xl flex justify-between items-center">
+      <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#07111f]/90 px-6 py-2 shadow-2xl backdrop-blur-xl">
         {/* Home */}
         <NavLink to="/" icon="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" label="Home" active={isActive('/')} />
         {/* <Link to="/" className="flex flex-col items-center gap-1">
@@ -48,7 +48,11 @@ const MobileNav = ({role}) => {
         
 
         {/* Parent Portal */}
-        <NavLink to="/transactions" icon="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" label="Logs" active={isActive('/transactions')} />
+        {isAdmin ? (
+          <NavLink to="/transactions" icon="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" label="Logs" active={isActive('/transactions')} />
+        ) : (
+          <NavLink to="/portal" icon="M3 7h18M5 7v10a2 2 0 002 2h10a2 2 0 002-2V7M8 11h8" label="Wallet" active={isActive('/portal')} />
+        )}
         {/* NEW: Settings / Sign Out */}
         <NavLink to="/settings" icon="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" label="Set" active={isActive('/settings')} />
 
@@ -59,12 +63,12 @@ const MobileNav = ({role}) => {
 // Helper component to keep the code clean
 const NavLink = ({ to, icon, label, active }) => (
   <Link to={to} className="flex flex-col items-center gap-1">
-    <div className={`p-2 rounded-xl transition-all ${active ? 'bg-emerald-500 text-white' : 'text-emerald-400'}`}>
+    <div className={`rounded-xl p-2 transition-all ${active ? 'bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-950/30' : 'text-slate-400'}`}>
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icon} />
       </svg>
     </div>
-    <span className="text-[10px] font-bold text-emerald-100/50 uppercase tracking-tighter">{label}</span>
+    <span className="text-[10px] font-bold uppercase tracking-tighter text-slate-500">{label}</span>
   </Link>
 );
 export default MobileNav;

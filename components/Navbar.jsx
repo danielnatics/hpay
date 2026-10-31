@@ -17,12 +17,12 @@ const Navbar = ({ connectStatus, onReconnect, role }) => {
 
   return (
     <>
-      <nav className="hidden md:flex items-center w-full bg-[#064e3b] text-white p-2 sticky top-0 z-50">
+      <nav className="sticky top-0 z-50 hidden w-full border-b border-white/10 bg-[#07111f]/90 p-2 text-white shadow-xl shadow-black/10 backdrop-blur-xl md:flex">
         <div className="w-full px-2 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Brand Logo */}
             <div className="flex items-center gap-2">
-              <div className="bg-emerald-600 p-2 rounded-lg">
+              <div className="rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 p-2 shadow-lg shadow-blue-500/20">
                 <svg
                   className="w-6 h-6 text-white"
                   fill="none"
@@ -39,17 +39,17 @@ const Navbar = ({ connectStatus, onReconnect, role }) => {
               </div>
               <span className="text-xl font-black tracking-tight">
                 HPAY
-                <span className="text-emerald-400 font-bold text-[12px] uppercase tracking-widest">
+                <span className="ml-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300">
                   {role || "Guest"}
                 </span>
               </span>
             </div>
 
             {/* Desktop Navigation Links */}
-            <div className="hidden md:flex items-center space-x-8">
+            <div className="hidden items-center space-x-2 rounded-2xl border border-white/10 bg-white/[0.04] p-1 md:flex">
               <Link
                 to="/"
-                className="text-sm font-medium hover:text-indigo-400"
+                className="rounded-xl px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
               >
                 Home
               </Link>
@@ -57,7 +57,7 @@ const Navbar = ({ connectStatus, onReconnect, role }) => {
                 <>
                   <Link
                     to="/admin"
-                    className="text-sm font-medium hover:text-emerald-300 transition-colors"
+                    className="rounded-xl px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-cyan-300"
                   >
                     Dashboard
                   </Link>
@@ -120,9 +120,9 @@ const Navbar = ({ connectStatus, onReconnect, role }) => {
               <button
                 onClick={onReconnect} // Trigger the reconnect function
                 disabled={connectStatus === "Connected"} // Disable if already online
-                className="flex flex-col items-end group hover:opacity-80 transition-opacity cursor-pointer disabled:cursor-default"
+                className="group flex cursor-pointer flex-col items-end transition-opacity hover:opacity-80 disabled:cursor-default"
               >
-                <span className="text-[10px] uppercase tracking-widest text-emerald-200/50 font-bold group-hover:text-emerald-200">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover:text-cyan-300">
                   {connectStatus === "Connected"
                     ? "System Live"
                     : "Click to Reconnect"}
@@ -160,7 +160,7 @@ const Navbar = ({ connectStatus, onReconnect, role }) => {
               {/* Logout Button */}
               <button
                 onClick={handleLogout}
-                className="bg-white/10 hover:bg-red-500/20 cursor-pointer text-white hover:text-red-300 px-3 py-1.5 rounded-md text-xs font-bold border border-white/10 transition-all uppercase tracking-wider"
+                className="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-300 transition-all hover:border-rose-400/40 hover:bg-rose-500/10 hover:text-rose-300"
               >
                 Sign Out
               </button>

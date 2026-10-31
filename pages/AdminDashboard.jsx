@@ -44,7 +44,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     // 2. Run initial fetch when page loads
-    fetchStats();
+    Promise.resolve().then(fetchStats);
 
     // 3. Set up the Realtime Subscription
     const channel = supabase
@@ -68,13 +68,13 @@ const AdminDashboard = () => {
   }, []);
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
+    <div className="min-h-screen bg-[#07111f] p-6 text-white md:p-8">
       <div className="max-w-7xl mx-auto">
         <header className="mb-8">
-          <h1 className="text-3xl font-black text-emerald-900">
+          <h1 className="text-3xl font-black tracking-tight text-white">
             HPay Control Center
           </h1>
-          <p className="text-slate-500 font-medium">
+          <p className="font-medium text-slate-400">
             Welcome back, Admin. Manage your HPAY ecosystem below.
           </p>
         </header>
@@ -114,7 +114,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <h2 className="text-xl font-bold text-slate-800 mb-4">Quick Actions</h2>
+        <h2 className="mb-4 text-xl font-bold text-white">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <ActionLink
             to="/register"
@@ -154,13 +154,13 @@ const AdminDashboard = () => {
 
 // Reusable Stat Card
 const StatCard = ({ title, value, icon, color }) => (
-  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+  <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-black/10 backdrop-blur-md">
     <div className={`${color} text-white p-4 rounded-xl text-2xl`}>{icon}</div>
     <div>
       <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">
         {title}
       </p>
-      <p className="text-2xl font-black text-slate-800">{value}</p>
+      <p className="text-2xl font-black text-white">{value}</p>
     </div>
   </div>
 );
@@ -169,10 +169,10 @@ const StatCard = ({ title, value, icon, color }) => (
 const ActionLink = ({ to, title, subtitle, icon }) => (
   <Link
     to={to}
-    className="bg-white p-5 rounded-xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all group"
+    className="group rounded-2xl border border-white/10 bg-white/[0.06] p-5 transition-all hover:border-cyan-400/50 hover:bg-white/10 hover:shadow-md"
   >
     <div className="text-2xl mb-2">{icon}</div>
-    <h3 className="font-bold text-slate-800 group-hover:text-emerald-700">
+    <h3 className="font-bold text-white group-hover:text-cyan-300">
       {title}
     </h3>
     <p className="text-xs text-slate-500">{subtitle}</p>

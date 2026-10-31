@@ -36,6 +36,50 @@ const RegistrationPage = () => {
   });
   const [status, setStatus] = useState("Scan Card...");
 
+  const classCode = (className) => {
+    const match = className.match(/^(JSS|SSS)\s*([1-3])$/i);
+    if (!match) return "";
+    return `${match[1].toLowerCase() === "sss" ? "ss" : "js"}${match[2]}`;
+  };
+
+  const generateStudentId = async (className) => {
+    const code = classCode(className);
+    if (!code) return "";
+
+    const year = new Date().getFullYear();
+    const prefix = `${year}${code}`;
+    const { data, error } = await supabase
+      .from("students")
+      .select("student_id")
+      .like("student_id", `${prefix}%`);
+
+    if (error) {
+      throw new Error(`Could not generate student ID: ${error.message}`);
+    }
+
+    const highestSerial = (data || []).reduce((highest, student) => {
+      const match = student.student_id?.match(
+        new RegExp(`^${prefix}(\\d{3})$`, "i"),
+      );
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0);
+
+    return `${prefix}${String(highestSerial + 1).padStart(3, "0")}`;
+  };
+
+  const normalizeWhatsAppNumber = (value) => {
+    const trimmed = value.trim();
+    if (trimmed.startsWith("+")) return `+${trimmed.slice(1).replace(/\D/g, "")}`;
+    const digits = trimmed.replace(/\D/g, "");
+    if (digits.startsWith("0")) return `+234${digits.slice(1)}`;
+    return `+${digits}`;
+  };
+
+  const createBootstrapPassword = () => {
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  };
+
   const today = new Date();
   const formattedDate = today.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -111,7 +155,12 @@ const RegistrationPage = () => {
     }
 
     if (!studentData.name || !studentData.id || !parentEmail || !parentPhone) {
-      toast.warning("Please fill in the Name and ID!");
+      toast.warning("Please complete the student and parent details.");
+      return;
+    }
+    const whatsappNumber = normalizeWhatsAppNumber(parentPhone);
+    if (!/^\+\d{10,15}$/.test(whatsappNumber)) {
+      toast.warning("Enter a valid WhatsApp number, for example +2348130000000.");
       return;
     }
     setLoading(true); // Always set loading to true at start
@@ -147,11 +196,11 @@ const RegistrationPage = () => {
         const { data: authData, error: authError } =
           await supabaseAdmin.auth.admin.createUser({
             email: cleanEmail,
-            password: "password123", // Default password
+            password: createBootstrapPassword(),
             email_confirm: true, // Bypasses email verification
             user_metadata: {
               role: "parent",
-              phone: parentPhone,
+              phone: whatsappNumber,
             },
             // email: cleanEmail,
             // password: "password123", // They can reset this later
@@ -166,13 +215,24 @@ const RegistrationPage = () => {
           {
             id: parentUid,
             email: cleanEmail,
-            phone: parentPhone,
+            phone: whatsappNumber,
             role: "parent",
           },
         ]);
 
         if (profileError)
           throw new Error("Could not create profile: " + profileError.message);
+
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+          cleanEmail,
+          { redirectTo: `${window.location.origin}/update-password` },
+        );
+
+        if (resetError) {
+          throw new Error(
+            `Parent was created, but the password setup email could not be sent: ${resetError.message}`,
+          );
+        }
       }
 
       // 2. SAVE STUDENT
@@ -183,7 +243,7 @@ const RegistrationPage = () => {
           student_id: studentData.id,
           parent_id: parentUid,
           parent_email: cleanEmail,
-          parent_phone: parentPhone,
+          parent_phone: whatsappNumber,
           gender: studentData.gender,
           class: studentData.class,
           registration_date: formattedDate, // Your d/m/y format
@@ -218,7 +278,11 @@ const RegistrationPage = () => {
       // );
 
       // 4. UI FEEDBACK
-      toast.success("Registration Succesful!");
+      toast.success(
+        existingParent
+          ? "Registration successful!"
+          : "Registration successful. The parent must use the password setup email before signing in.",
+      );
       setStatus("Registration successful!");
 
       // 5. CLEAR FORM
@@ -240,28 +304,31 @@ const RegistrationPage = () => {
         {/* <div className="text-center text-emerald-500">{status}</div> */}
         <form
           onSubmit={handleRegister}
-          className="max-w-md mx-auto p-6 md:p-8 bg-white rounded-3xl shadow-xl shadow-emerald-900/5 border border-slate-100 space-y-4"
+          className="mx-auto max-w-md space-y-4 rounded-3xl border border-blue-500/20 bg-[#0d1526]/95 p-6 text-white shadow-2xl shadow-blue-950/30 md:p-8"
         >
           <div className="text-center pb-2">
-            <h2 className="text-2xl font-black text-emerald-900 tracking-tight">
-              Student Enrollmenty
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 text-xl font-black shadow-lg shadow-blue-500/25">
+              H
+            </div>
+            <h2 className="text-2xl font-black tracking-tight text-white">
+              Student Enrollment
             </h2>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">
-              HezTec HPay Systems
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-300">
+              H-Pay School Payments
             </p>
           </div>
 
           {/* --- SECTION: Student Identity --- */}
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase ml-1">
+              <label className="ml-1 text-xs font-bold uppercase text-slate-300">
                 Full Name
               </label>
               <input
                 type="text"
                 required
                 placeholder="Enter Student Name"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50/50 transition-all"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-all placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
                 value={studentData.name}
                 onChange={(e) =>
                   setStudentData({ ...studentData, name: e.target.value })
@@ -271,31 +338,39 @@ const RegistrationPage = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase ml-1">
+                <label className="ml-1 text-xs font-bold uppercase text-slate-300">
                   School ID
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="ID-000"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50/50"
+                  readOnly
+                  placeholder="Select class"
+                  className="w-full rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 font-mono font-bold text-blue-200 outline-none"
                   value={studentData.id}
-                  onChange={(e) =>
-                    setStudentData({ ...studentData, id: e.target.value })
-                  }
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase ml-1">
+                <label className="ml-1 text-xs font-bold uppercase text-slate-300">
                   Class/Level
                 </label>
                 <select
                   required
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50/50 text-slate-700"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-slate-200 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
                   value={studentData.class || ""}
-                  onChange={(e) =>
-                    setStudentData({ ...studentData, class: e.target.value })
-                  }
+                  onChange={async (e) => {
+                    const selectedClass = e.target.value;
+                    try {
+                      const id = await generateStudentId(selectedClass);
+                      setStudentData((prev) => ({
+                        ...prev,
+                        class: selectedClass,
+                        id,
+                      }));
+                    } catch (error) {
+                      toast.error(error.message);
+                    }
+                  }}
                 >
                   <option value="" disabled>
                     Select
@@ -312,15 +387,15 @@ const RegistrationPage = () => {
           </div>
 
           {/* --- SECTION: Parent & Communication --- */}
-          <div className="pt-2 space-y-3 border-t border-slate-50">
+          <div className="space-y-3 border-t border-white/10 pt-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase ml-1">
+                <label className="ml-1 text-xs font-bold uppercase text-slate-300">
                   Gender
                 </label>
                 <select
                   required
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50/50"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-slate-200 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
                   value={studentData.gender || ""}
                   onChange={(e) =>
                     setStudentData({ ...studentData, gender: e.target.value })
@@ -334,14 +409,14 @@ const RegistrationPage = () => {
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase ml-1">
-                  Parent Phone
+                <label className="ml-1 text-xs font-bold uppercase text-slate-300">
+                  Parent WhatsApp Number
                 </label>
                 <input
                   type="tel"
                   required
                   placeholder="0813..."
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50/50"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-slate-200 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
                   value={parentPhone}
                   onChange={(e) => setParentPhone(e.target.value)}
                 />
@@ -349,14 +424,14 @@ const RegistrationPage = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase ml-1">
+              <label className="ml-1 text-xs font-bold uppercase text-slate-300">
                 Parent Email
               </label>
               <input
                 type="email"
                 required
                 placeholder="guardian@email.com"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50/50"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-slate-200 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
                 value={parentEmail}
                 onChange={(e) => setParentEmail(e.target.value)}
               />
@@ -364,12 +439,12 @@ const RegistrationPage = () => {
           </div>
 
           {/* --- SECTION: Hardware Integration --- */}
-          <div className="pt-2 space-y-1">
-            <label className="text-xs font-bold text-slate-800 uppercase ml-1 flex items-center justify-between">
-              RFID Tag UID
+          <div className="space-y-1 pt-2">
+            <label className="ml-1 flex items-center justify-between text-xs font-bold uppercase text-slate-300">
+              Student Card ID
               {studentData.rfid ? (
-                <span className="text-emerald-600 font-black flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                <span className="flex items-center gap-1 font-black text-emerald-300">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400"></span>
                   Ready
                 </span>
               ) : (
@@ -380,7 +455,7 @@ const RegistrationPage = () => {
             </label>
             <input
               type="text"
-              placeholder="Scan card on ESP32 or type UID..."
+              placeholder="Scan or enter card ID..."
               value={studentData.rfid}
               onChange={(e) => {
                 const val = e.target.value.trim().toUpperCase();
@@ -388,8 +463,8 @@ const RegistrationPage = () => {
                 if (val) setStatus("Card UID Entered");
               }}
               className={`w-full px-4 py-3 rounded-xl border font-mono text-sm transition-all duration-300 ${studentData.rfid
-                  ? "bg-emerald-50 border-emerald-400 text-emerald-700 font-bold shadow-inner"
-                  : "bg-slate-50 border-slate-200 text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none"
+                  ? "border-emerald-400 bg-emerald-500/10 font-bold text-emerald-200 shadow-inner"
+                  : "border-white/10 bg-white/5 text-slate-200 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
                 }`}
             />
           </div>
@@ -398,8 +473,8 @@ const RegistrationPage = () => {
             type="submit"
             disabled={loading || !studentData.rfid}
             className={`w-full mt-2 font-black py-4 rounded-2xl shadow-lg cursor-pointer transition-all active:scale-[0.98] ${loading || !studentData.rfid
-                ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 hover:shadow-emerald-300/50"
+                ? "cursor-not-allowed bg-slate-600 text-slate-400"
+                : "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-blue-900/40 hover:from-blue-500 hover:to-cyan-400"
               }`}
           >
             {loading ? (
