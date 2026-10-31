@@ -115,12 +115,18 @@ const AdminDashboard = () => {
 
         {/* Quick Actions */}
         <h2 className="text-xl font-bold text-slate-800 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <ActionLink
             to="/register"
             title="Enroll New Student"
             subtitle="Link RFID Card to Profile"
             icon="➕"
+          />
+          <ActionLink
+            to="/attendance"
+            title="School Attendance"
+            subtitle="Live Check-Ins & Logs"
+            icon="📋"
           />
           <ActionLink
             to="/studentLists"

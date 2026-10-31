@@ -244,7 +244,7 @@ const RegistrationPage = () => {
         >
           <div className="text-center pb-2">
             <h2 className="text-2xl font-black text-emerald-900 tracking-tight">
-              Student Enrollment
+              Student Enrollmenty
             </h2>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">
               HezTec HPay Systems
@@ -368,37 +368,39 @@ const RegistrationPage = () => {
             <label className="text-xs font-bold text-slate-800 uppercase ml-1 flex items-center justify-between">
               RFID Tag UID
               {studentData.rfid ? (
-                <span className="text-emerald-600 font-black animate-pulse flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                <span className="text-emerald-600 font-black flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
                   Ready
                 </span>
               ) : (
                 <span className="text-slate-400 font-normal lowercase italic">
-                  waiting for scan...
+                  scan card or type UID...
                 </span>
               )}
             </label>
             <input
               type="text"
-              readOnly
-              placeholder="Scan card on ESP32..."
+              placeholder="Scan card on ESP32 or type UID..."
               value={studentData.rfid}
-              className={`w-full px-4 py-3 rounded-xl border font-mono text-sm transition-all duration-500 ${
-                studentData.rfid
+              onChange={(e) => {
+                const val = e.target.value.trim().toUpperCase();
+                setStudentData((prev) => ({ ...prev, rfid: val }));
+                if (val) setStatus("Card UID Entered");
+              }}
+              className={`w-full px-4 py-3 rounded-xl border font-mono text-sm transition-all duration-300 ${studentData.rfid
                   ? "bg-emerald-50 border-emerald-400 text-emerald-700 font-bold shadow-inner"
-                  : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed italic"
-              }`}
+                  : "bg-slate-50 border-slate-200 text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none"
+                }`}
             />
           </div>
 
           <button
             type="submit"
             disabled={loading || !studentData.rfid}
-            className={`w-full mt-2 font-black py-4 rounded-2xl shadow-lg cursor-pointer transition-all active:scale-[0.98] ${
-              loading || !studentData.rfid
+            className={`w-full mt-2 font-black py-4 rounded-2xl shadow-lg cursor-pointer transition-all active:scale-[0.98] ${loading || !studentData.rfid
                 ? "bg-slate-200 text-slate-400 cursor-not-allowed"
                 : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 hover:shadow-emerald-300/50"
-            }`}
+              }`}
           >
             {loading ? (
               <div className="flex items-center justify-center gap-2 ">

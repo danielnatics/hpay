@@ -79,6 +79,12 @@ const Navbar = ({ connectStatus, onReconnect, role }) => {
                   >
                     Logs
                   </Link>
+                  <Link
+                    to="/attendance"
+                    className="text-sm font-medium hover:text-emerald-300 transition-colors"
+                  >
+                    Attendance
+                  </Link>
                 </>
               )}
               {role === "parent" && (

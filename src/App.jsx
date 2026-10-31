@@ -8,6 +8,7 @@ import StudentList from "../pages/StudentList.jsx";
 import Landing from "../pages/Landing.jsx";
 import AdminDashboard from "../pages/AdminDashboard.jsx";
 import Transactions from "../pages/Transactions.jsx";
+import Attendance from "../pages/Attendance.jsx";
 import UpdatePassword from "../pages/UpdatePassword.jsx";
 import ForgotPassword from "../pages/ForgotPassword.jsx";
 
@@ -19,6 +20,7 @@ import MobileHeader from "../components/MobileHeader.jsx";
 import Footer from "../components/Footer.jsx";
 import ScrollToTop from "../components/ScrollToTop.jsx";
 import Settings from "../components/Settings.jsx";
+import InstallBanner from "../components/InstallBanner.jsx";
 
 
 import mqtt from "mqtt";
@@ -152,6 +154,7 @@ const App = () => {
   return (
     <BrowserRouter>
     <ScrollToTop/>
+      <InstallBanner />
       <div className="flex flex-col min-h-screen pb-24 md:pb-0 ">
         <ToastContainer position="top-center" autoClose={2500} />
         <MobileHeader
@@ -242,6 +245,16 @@ const App = () => {
               element={
                 session && role === "admin" ? (
                   <Transactions />
+                ) : (
+                  <Navigate to="/login" />
+                )
+              }
+            />
+            <Route
+              path="/attendance"
+              element={
+                session && role === "admin" ? (
+                  <Attendance />
                 ) : (
                   <Navigate to="/login" />
                 )

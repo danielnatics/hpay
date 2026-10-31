@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="80" fill="#0f172a"/>
+  <!-- H letter -->
+  <rect x="110" y="128" width="50" height="256" rx="12" fill="url(#grad)"/>
+  <rect x="231" y="208" width="50" height="96" rx="12" fill="url(#grad)"/>
+  <rect x="352" y="128" width="50" height="256" rx="12" fill="url(#grad)"/>
+  <!-- NFC waves -->
+  <path d="M406 180 Q446 256 406 332" stroke="#06b6d4" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.8"/>
+  <path d="M428 156 Q480 256 428 356" stroke="#06b6d4" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.45"/>
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+</svg>
