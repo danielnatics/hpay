@@ -193,6 +193,18 @@ const App = () => {
                 )
               }
             />
+            <Route
+              path="/staff"
+              element={
+                !session ? (
+                  <Login adminOnly />
+                ) : role === "admin" ? (
+                  <Navigate to="/admin" />
+                ) : (
+                  <Navigate to="/portal" />
+                )
+              }
+            />
             <Route path="/forgot-password" element={<ForgotPassword/>}/>
             <Route path="/update-password" element={<UpdatePassword/>}/>
             <Route path="/settings" element={<Settings role={role} />} />

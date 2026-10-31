@@ -4,12 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const Login = () => {
+const Login = ({ adminOnly = false }) => {
   const [identifier, setIdentifier] = useState(""); // Can be email or phone
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("parent"); // 'parent' or 'admin'
+  const activeTab = adminOnly ? "admin" : "parent";
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -19,7 +19,7 @@ const Login = () => {
     try {
       let loginEmail = identifier.trim();
 
-      // --- LOGIC: If Parent is using a Phone Number instead of Email ---
+      // --- LOGIC: If a parent is using a phone number instead of email ---
       if (activeTab === "parent" && !identifier.includes("@")) {
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
@@ -50,8 +50,8 @@ const Login = () => {
       }
 
       // --- NAVIGATION ---
-      if (userRole === "admin") navigate("/register");
-      else navigate("/parentPortal");
+      if (userRole === "admin") navigate("/admin");
+      else navigate("/portal");
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -60,35 +60,39 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-90 p-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#070c1a] p-4 text-white">
+      <div className="pointer-events-none absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl" />
       <ToastContainer position="top-center" autoClose={2500} />
 
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl shadow-emerald-900/5 border border-slate-100 overflow-hidden">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-blue-500/20 bg-[#0d1526]/95 shadow-2xl shadow-blue-950/40 backdrop-blur-xl">
+        <div className="h-1 w-full bg-gradient-to-r from-blue-600 via-cyan-400 to-blue-600" />
         {/* Tab Switcher */}
-        <div className="flex bg-slate-100 p-1 m-6 rounded-2xl">
-          <button
-            onClick={() => setActiveTab("parent")}
-            className={`flex-1 py-3 rounded-xl font-bold transition-all ${activeTab === "parent" ? "bg-white text-emerald-900 shadow-sm" : "text-slate-500"}`}
-          >
-            Parent
-          </button>
-          <button
-            onClick={() => setActiveTab("admin")}
-            className={`flex-1 py-3 rounded-xl font-bold transition-all ${activeTab === "admin" ? "bg-white text-emerald-900 shadow-sm" : "text-slate-500"}`}
-          >
-            Admin
-          </button>
+        <div className="mx-6 mt-6 flex rounded-2xl border border-white/10 bg-white/5 p-1">
+          {!adminOnly && (
+            <div className="flex-1 rounded-xl bg-blue-500/15 py-3 text-center font-bold text-blue-200 shadow-sm">
+              Parent Portal
+            </div>
+          )}
+          {adminOnly && (
+            <div className="flex-1 rounded-xl bg-white/10 py-3 text-center font-bold text-white shadow-sm">
+              Staff Console
+            </div>
+          )}
         </div>
 
         <div className="px-8 pb-8">
           <div className="text-center mb-8">
-            <h2 className="text-4xl font-black text-emerald-900 italic">
-              H-PAY
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 text-2xl font-black shadow-lg shadow-blue-500/25">
+              H
+            </div>
+            <h2 className="text-3xl font-black italic tracking-tight text-white">
+              H<span className="text-blue-400">-Pay</span>
             </h2>
-            <p className="text-slate-500 font-medium lowercase tracking-tight">
-              {activeTab === "admin"
+            <p className="mt-2 text-sm font-medium tracking-tight text-slate-400">
+              {adminOnly
                 ? "authorized personnel only"
-                : "manage your childs card"}
+                : "secure access for parents and guardians"}
             </p>
           </div>
 
@@ -97,12 +101,8 @@ const Login = () => {
             <div className="relative">
               <input
                 type="text"
-                placeholder={
-                  activeTab === "admin"
-                    ? "Admin Email"
-                    : "Email or Phone Number"
-                }
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
+                placeholder={adminOnly ? "Staff Email" : "Email or Phone Number"}
+                className="w-full rounded-2xl border border-white/10 bg-white/5 p-4 font-medium text-white outline-none transition-all placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
                 onChange={(e) => setIdentifier(e.target.value)}
                 required
               />
@@ -113,14 +113,14 @@ const Login = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Password"
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 p-4 font-medium text-white outline-none transition-all placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-cyan-300"
               >
                 {showPassword ? (
                   <svg
@@ -159,20 +159,24 @@ const Login = () => {
                 )}
               </button>
             </div>
-           {activeTab ==='parent'&& <div className="flex justify-end pr-2">
+           {!adminOnly && <div className="flex justify-end pr-2">
               <button
                 type="button"
                 onClick={() => navigate("/forgot-password")}
-                className="text-xs font-bold text-emerald-700 hover:underline cursor-pointer"
+                className="cursor-pointer text-xs font-bold text-blue-300 hover:text-cyan-300 hover:underline"
               >
                 Forgot Password?
               </button>
             </div>}
             <button
               disabled={loading}
-              className={`w-full py-4 rounded-2xl font-black text-white shadow-lg transition-all active:scale-[0.98] ${loading ? "bg-slate-400 shadow-none" : "bg-emerald-900 hover:bg-emerald-800 shadow-emerald-100"}`}
+              className={`w-full rounded-2xl py-4 font-black text-white shadow-lg transition-all active:scale-[0.98] ${loading ? "bg-slate-600 shadow-none" : "bg-gradient-to-r from-blue-600 to-cyan-500 shadow-blue-900/40 hover:from-blue-500 hover:to-cyan-400"}`}
             >
-              {loading ? "VERIFYING..." : "SIGN IN TO PORTAL"}
+              {loading
+                ? "VERIFYING..."
+                : adminOnly
+                  ? "SIGN IN TO STAFF CONSOLE"
+                  : "SIGN IN TO PARENT PORTAL"}
             </button>
           </form>
         </div>
