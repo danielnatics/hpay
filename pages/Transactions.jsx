@@ -16,16 +16,21 @@ const Transactions = () => {
   useEffect(() => {
     fetchTransactions();
 
-    // Subscribe to NEW transactions only
     const channel = supabase
       .channel("live-transactions")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "transactions" },
+        { event: "*", schema: "public", table: "transactions" },
         (payload) => {
-          console.log("New transaction arrived!", payload.new);
-          // Add the new transaction to the top of the existing list
-          setTransactions((prev) => [payload.new, ...prev]);
+          if (payload.eventType === "INSERT") {
+            fetchTransactions();
+          } else if (payload.eventType === "UPDATE") {
+            fetchTransactions();
+          } else if (payload.eventType === "DELETE") {
+            setTransactions((prev) =>
+              prev.filter((transaction) => transaction.id !== payload.old.id),
+            );
+          }
         },
       )
       .subscribe();

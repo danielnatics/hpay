@@ -15,7 +15,6 @@ import ForgotPassword from "../pages/ForgotPassword.jsx";
 // Components
 import Login from "../components/Login.jsx";
 import Navbar from "../components/Navbar";
-import MobileNav from "../components/MobileNav.jsx";
 import MobileHeader from "../components/MobileHeader.jsx";
 import Footer from "../components/Footer.jsx";
 import ScrollToTop from "../components/ScrollToTop.jsx";
@@ -155,7 +154,7 @@ const App = () => {
     <BrowserRouter>
     <ScrollToTop/>
       <InstallBanner />
-      <div className="flex flex-col min-h-screen pb-24 md:pb-0 ">
+      <div className="flex min-h-screen flex-col bg-[#070c1a]">
         <ToastContainer position="top-center" autoClose={2500} />
         <MobileHeader
           connectStatus={connectStatus}
@@ -291,7 +290,6 @@ const App = () => {
             /> */}
           </Routes>
         </main>
-        <MobileNav role={role} />
         <Footer />
       </div>
       <>

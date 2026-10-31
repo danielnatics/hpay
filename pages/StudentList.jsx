@@ -25,22 +25,31 @@ const StudentList = () => {
   };
 
   useEffect(() => {
-    fetchStudents();const channel = supabase
+    Promise.resolve().then(fetchStudents);
+    const channel = supabase
     .channel('list-updates')
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'students' },
       (payload) => {
         if (payload.eventType === 'UPDATE') {
-          // Update only the specific student in your local state
-          setStudents(prev => prev.map(student => 
-            student.id === payload.new.id ? payload.new : student
-          ));
+          setStudents((prev) =>
+            prev.map((student) =>
+              student.student_id === payload.new.student_id
+                ? payload.new
+                : student,
+            ),
+          );
         } else if (payload.eventType === 'INSERT') {
-          // Add the new student to the top of the list
           setStudents(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'DELETE') {
+          setStudents((prev) =>
+            prev.filter(
+              (student) => student.student_id !== payload.old.student_id,
+            ),
+          );
         }
-      }
+      },
     )
     .subscribe();
 
@@ -49,6 +58,11 @@ const StudentList = () => {
 
 // --- 1. BLOCK CARD LOGIC ---
   const handleBlockCard = async (student) => {
+    if (student.rfid_uid.startsWith("BLOCKED_")) {
+      toast.info("This card is already blocked.");
+      return;
+    }
+
     const confirm = window.confirm(`Block card for ${student.name}? The card will be permanently disabled.`);
     if (!confirm) return;
 
@@ -56,7 +70,7 @@ const StudentList = () => {
     // and can't be accidentally re-registered easily.
     const blockedUid = `BLOCKED_${student.rfid_uid}_${Date.now()}`;
 
-    const {data, error } = await supabase
+    const { data, error } = await supabase
       .from('students')
       .update({ rfid_uid: blockedUid })
       .eq('rfid_uid', student.rfid_uid)
@@ -64,11 +78,9 @@ const StudentList = () => {
 
     if (error) {
       toast.error("Error blocking card: " + error.message);
-    } else if(data.length === 0){
-      // This is the "Ghost" success - Supabase didn't find the ID
-    toast.error(`Card not found in the database`);
-    console.log("Looking for:", student.student_id);
-    }else {
+    } else if (!data || data.length === 0) {
+      toast.error("Card could not be found or was not changed.");
+    } else {
       toast.warn(`Card for ${student.name} has been deactivated.`);
       fetchStudents();
     }
@@ -79,12 +91,21 @@ const StudentList = () => {
     const newRfid = prompt(`Scan/Enter NEW RFID UID for ${student.name}:`);
     
     if (!newRfid || newRfid.trim() === "") return;
+    const normalizedRfid = newRfid.trim().toUpperCase();
+    if (normalizedRfid.startsWith("BLOCKED_")) {
+      toast.error("Enter an active RFID UID, not a blocked card marker.");
+      return;
+    }
+    if (normalizedRfid === student.rfid_uid) {
+      toast.info("Enter a different RFID UID.");
+      return;
+    }
 
     // Check if this new card is already assigned to someone else
     const { data: duplicate } = await supabase
       .from('students')
       .select('name')
-      .eq('rfid_uid', newRfid.trim())
+      .eq('rfid_uid', normalizedRfid)
       .maybeSingle();
 
     if (duplicate) {
@@ -94,8 +115,8 @@ const StudentList = () => {
 
     const { error } = await supabase
       .from('students')
-      .update({ rfid_uid: newRfid.trim() })
-      .eq('id', student.id);
+      .update({ rfid_uid: normalizedRfid })
+      .eq('rfid_uid', student.rfid_uid);
 
     if (error) {
       toast.error("Replacement failed: " + error.message);
@@ -105,13 +126,79 @@ const StudentList = () => {
     }
   };
 
+  const handleAdjustBalance = async (student) => {
+    const amountInput = prompt(
+      `Enter the new balance for ${student.name} (current: ₦${Number(student.balance || 0).toLocaleString()}):`,
+    );
+    if (amountInput === null || amountInput.trim() === "") return;
+
+    const newBalance = Number(amountInput);
+    if (!Number.isFinite(newBalance) || newBalance < 0) {
+      toast.error("Enter a valid balance of zero or more.");
+      return;
+    }
+
+    const previousBalance = Number(student.balance || 0);
+    if (newBalance === previousBalance) {
+      toast.info("The balance is unchanged.");
+      return;
+    }
+
+    const { data: updateResult, error: updateError } = await supabase
+      .from("students")
+      .update({ balance: newBalance })
+      .eq("rfid_uid", student.rfid_uid)
+      .select("rfid_uid, balance");
+
+    if (updateError) {
+      toast.error("Balance update failed: " + updateError.message);
+      return;
+    }
+
+    if (!updateResult || updateResult.length === 0) {
+      toast.error(
+        "Balance update was blocked or the student was not found. Check the admin UPDATE policy in Supabase.",
+      );
+      return;
+    }
+
+    const savedBalance = Number(updateResult[0].balance);
+    if (!Number.isFinite(savedBalance) || savedBalance !== newBalance) {
+      toast.error(
+        "Supabase returned a different balance than requested. Check the balance column type and constraints.",
+      );
+      return;
+    }
+
+    const { error: transactionError } = await supabase
+      .from("transactions")
+      .insert([
+        {
+          rfid_uid: student.rfid_uid,
+          amount: Math.abs(newBalance - previousBalance),
+          transaction_type: "DEPOSIT",
+          source: "WEB",
+        },
+      ]);
+
+    if (transactionError) {
+      console.error("Manual balance transaction log failed:", transactionError);
+      toast.error(
+        `Balance updated, but the adjustment was not logged: ${transactionError.message}`,
+      );
+    } else {
+      toast.success(`Balance updated for ${student.name}.`);
+    }
+    fetchStudents();
+  };
+
   // Filter students based on search input
   const filteredStudents = students.filter(s => 
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     s.rfid_uid.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const deleteStudent = async (rfid, studentName) => {
+  const deleteStudent = async (studentRfid, studentName) => {
     // 1. Ask for confirmation so you don't delete by accident
     if (
       !window.confirm(
@@ -127,16 +214,16 @@ const StudentList = () => {
     const { error } = await supabase
       .from("students")
       .delete()
-      .eq("rfid_uid", rfid);
+      .eq("rfid_uid", studentRfid);
 
     if (error) {
       toast.error("Error deleting student: " + error.message);
     } else {
       toast.success(`${studentName} has been removed from the cloud.`);
       // 3. Refresh the list so the student disappears from the table
-      fetchStudents();
     }
     setLoading(false);
+    if (!error) fetchStudents();
   };
 
 return (
@@ -192,7 +279,7 @@ return (
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {filteredStudents.map((student) => (
-                    <tr key={student.id} className="hover:bg-blue-50/30 transition-colors">
+                    <tr key={student.student_id || student.rfid_uid} className="hover:bg-blue-50/30 transition-colors">
                       <td className="px-6 py-4 text-sm font-bold text-slate-400">{student.student_id}</td>
                       <td className="px-6 py-4">
                         <p className="text-sm font-bold text-slate-800">{student.name}</p>
@@ -210,6 +297,13 @@ return (
                       </td>
                       <td className="px-6 py-4 flex items-center justify-center gap-2">
                         <button 
+                          onClick={() => handleAdjustBalance(student)}
+                          className="rounded-lg p-2 text-emerald-600 transition-colors hover:bg-emerald-50"
+                          title="Adjust Balance"
+                        >
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V6m0 12v-2m6-4a6 6 0 11-12 0 6 6 0 0112 0z" /></svg>
+                        </button>
+                        <button 
                           onClick={() => handleReplaceCard(student)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="Replace Card"
@@ -225,7 +319,7 @@ return (
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" /></svg>
                         </button>
                         <button 
-                          onClick={() => deleteStudent(student.student_id, student.name)}
+                          onClick={() => deleteStudent(student.rfid_uid, student.name)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete Student"
                         >
@@ -254,4 +348,3 @@ return (
 const cellStyle = { padding: "12px", borderBottom: "1px solid #ececec" };
 
 export default StudentList;
-

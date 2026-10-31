@@ -355,7 +355,16 @@ const Landing = () => {
                 Cashless Schools <br />Start Here
               </h2>
               <p className="text-slate-400 leading-relaxed mb-5">
-                H-Pay was built by <span className="text-white font-semibold">HezTec</span> to solve a real problem — school canteens handling cash are slow, error-prone, and difficult for parents to monitor.
+                H-Pay was built by{" "}
+                <a
+                  href="https://heztec.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-white transition-colors hover:text-cyan-300"
+                >
+                  HezTec
+                </a>{" "}
+                to solve a real problem — school canteens handling cash are slow, error-prone, and difficult for parents to monitor.
               </p>
               <p className="text-slate-400 leading-relaxed mb-8">
                 Our service brings payments, family accounts, and school administration together in one clear, dependable experience.
@@ -423,9 +432,9 @@ const Landing = () => {
               </p>
               <div className="flex flex-col gap-4">
                 {[
-                  { icon: '🌐', label: 'Website', val: 'heztec.com' },
+                  { icon: '🌐', label: 'Website', val: 'heztec.com', href: 'https://heztec.com' },
                   { icon: '📧', label: 'Email', val: 'info@heztec.com' },
-                  { icon: '📍', label: 'Built by', val: 'HezTec Solutions' },
+                  { icon: '📍', label: 'Built by', val: 'HezTec Solutions', href: 'https://heztec.com' },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-lg">
@@ -433,7 +442,18 @@ const Landing = () => {
                     </div>
                     <div>
                       <div className="text-slate-500 text-xs">{item.label}</div>
-                      <div className="text-white text-sm font-semibold">{item.val}</div>
+                      {item.href ? (
+                        <a
+                          href={item.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-white text-sm font-semibold transition-colors hover:text-cyan-300"
+                        >
+                          {item.val}
+                        </a>
+                      ) : (
+                        <div className="text-white text-sm font-semibold">{item.val}</div>
+                      )}
                     </div>
                   </div>
                 ))}

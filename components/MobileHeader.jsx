@@ -1,12 +1,15 @@
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { toast } from "react-toastify";
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 
 const MobileHeader = ({ connectStatus, onReconnect, role }) => {
-   const [session, setSession] = useState(null);
- 
-     useEffect(() => {
+  const [session, setSession] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
     // 1. Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -20,61 +23,94 @@ const MobileHeader = ({ connectStatus, onReconnect, role }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // --- THE FIX: If no user is logged in, return nothing ---
   if (!session) return null;
 
+  const isAdmin = role === "admin";
+  const links = isAdmin
+    ? [
+        ["Dashboard", "/admin"],
+        ["Register Student", "/register"],
+        ["Student List", "/studentLists"],
+        ["Transactions", "/transactions"],
+        ["Attendance", "/attendance"],
+        ["Settings", "/settings"],
+      ]
+    : [
+        ["My Wallet", "/portal"],
+        ["Settings", "/settings"],
+      ];
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Logout failed: " + error.message);
+      return;
+    }
+    setMenuOpen(false);
+    navigate("/");
+  };
 
   return (
-    <header className="md:hidden bg-emerald-800 backdrop-blur-md border-b border-emerald-50 p-4 flex justify-between items-center sticky top-0 z-40">
-      <div className="flex items-center gap-2">
-        <div className="bg-emerald-600 h-8 w-8 rounded flex items-center justify-center">
-          <span className="text-white font-black text-xs">H</span>
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#07111f]/95 text-white shadow-xl shadow-black/10 backdrop-blur-xl md:hidden">
+      <div className="flex items-center justify-between p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 shadow-lg shadow-blue-500/20">
+            <span className="text-sm font-black text-white">H</span>
+          </div>
+          <div>
+            <span className="block font-black tracking-tight text-white">HPAY</span>
+            <span className="block text-[9px] font-bold uppercase tracking-[0.2em] text-cyan-300">
+              {role || "Guest"}
+            </span>
+          </div>
         </div>
-        <span className="font-bold text-emerald-100 tracking-tight">HPAY <span className="text-emerald-400 font-bold text-[12px] uppercase tracking-widest">
-                  {role || "Guest"}
-                </span></span>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onReconnect}
+            disabled={connectStatus === "Connected"}
+            className={`h-2.5 w-2.5 rounded-full ${
+              connectStatus === "Connected" ? "bg-emerald-400" : "bg-rose-400"
+            }`}
+            aria-label={`Connection status: ${connectStatus}`}
+          />
+          <button
+            onClick={() => setMenuOpen((open) => !open)}
+            className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-slate-300 transition hover:border-cyan-400/50 hover:text-cyan-300"
+            aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={menuOpen}
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {menuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
-      {/* Mini Connection Dot */}
-      <div className="flex items-center gap-2 px-3 py-1 rounded-full">
-        {/* <span
-          className={`h-2 w-2 rounded-full animate-pulse ${connectStatus === "Connected" ? "bg-green-500" : "bg-red-500"}`}
-        ></span>
-        <span className="text-[10px] font-bold text-emerald-800 uppercase">
-          {connectStatus}
-        </span> */}
-         <button 
-                onClick={onReconnect} // Trigger the reconnect function
-                disabled={connectStatus === "Connected"} // Disable if already online
-                className="flex flex-col items-end group hover:opacity-80 transition-opacity cursor-pointer disabled:cursor-default"
-              >
-                <span className="text-[10px] uppercase tracking-widest text-emerald-200/50 font-bold group-hover:text-emerald-200">
-                  {connectStatus === "Connected" ? "System Live" : "Click to Reconnect"}
-                </span>
-                
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-3 w-3">
-                    <span
-                      className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                        connectStatus === "Connected" ? "bg-green-400" : "bg-red-400"
-                      }`}
-                    ></span>
-                    <span
-                      className={`relative inline-flex rounded-full h-3 w-3 ${
-                        connectStatus === "Connected" ? "bg-green-500" : "bg-red-500"
-                      }`}
-                    ></span>
-                  </span>
-                  <span
-                    className={`text-xs font-semibold ${
-                      connectStatus === "Connected" ? "text-green-400" : "text-red-400"
-                    }`}
-                  >
-                    {connectStatus}
-                  </span>
-                </div>
-              </button>
-      </div>
+      {menuOpen && (
+        <nav className="border-t border-white/10 bg-[#0d1526] px-4 pb-4 pt-2">
+          {links.map(([label, path]) => (
+            <Link
+              key={path}
+              to={path}
+              onClick={() => setMenuOpen(false)}
+              className="block rounded-xl px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-cyan-300"
+            >
+              {label}
+            </Link>
+          ))}
+          <button
+            onClick={handleLogout}
+            className="mt-2 w-full rounded-xl border border-rose-400/20 px-4 py-3 text-left text-sm font-bold text-rose-300 transition hover:bg-rose-500/10"
+          >
+            Sign Out
+          </button>
+        </nav>
+      )}
     </header>
   );
 };

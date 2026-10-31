@@ -117,77 +117,6 @@ const ParentPortal = () => {
     };
   }, []);
 
-  const handleTopUp = async (studentRfid, currentBalance) => {
-  const amount = prompt("Enter amount to add (₦):");
-  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
-
-  const topUpAmount = parseFloat(amount);
-  const newBalance = parseFloat(currentBalance) + topUpAmount;
-
-  // 1. Update Student Balance using the RFID
-  const { error: updateError } = await supabase
-    .from('students')
-    .update({ balance: newBalance })
-    .eq('rfid_uid', studentRfid); // This now matches the RFID passed from the button
-
-  if (updateError) {
-    toast.error("Top-up failed: " + updateError.message);
-    return;
-  }
-
-  // 2. Log the Transaction
-  const { error: txError } = await supabase.from('transactions').insert([
-    { 
-      rfid_uid: studentRfid, // Ensure this column in 'transactions' table is TEXT type
-      amount: topUpAmount, 
-      transaction_type: 'DEPOSIT', 
-      source: 'WEB' 
-    }
-  ]);
-
-  if (txError) {
-    console.error("Log error:", txError);
-    // We don't return here because the money was already added, 
-    // but we should warn the user/admin.
-    toast.warning("Balance updated, but transaction log failed.");
-  } else {
-    toast.success(`₦${topUpAmount} added successfully!`);
-  }
-
-  fetchMyChildren(); // Refresh the UI
-};
-
-  // const handleTopUp = async (studentId, currentBalance) => {
-  //   const amount = prompt("Enter amount to add (₦):");
-  //   if (!amount || isNaN(amount)) return;
-
-  //   const newBalance = parseFloat(currentBalance) + parseFloat(amount);
-
-  //   // 1. Update Student Balance
-  //   const { error: updateError } = await supabase
-  //     .from('students')
-  //     .update({ balance: newBalance })
-  //     .eq('rfid_uid', studentId);
-
-  //   if (updateError) {
-  //     toast.error("Top-up failed: " + updateError.message);
-  //     return;
-  //   }
-
-  //   // 2. Log the Transaction
-  //   await supabase.from('transactions').insert([
-  //     { 
-  //       student_id: studentId, 
-  //       amount: parseFloat(amount), 
-  //       type: 'credit', 
-  //       description: 'Parent Top-up' 
-  //     }
-  //   ]);
-
-  //   toast.success(`₦${amount} added successfully!`);
-  //   fetchMyChildren(); // Refresh the UI
-  // };
-
   return (
     <div className="min-h-screen bg-[#07111f] px-4 py-8 text-white md:p-8">
       <div className="max-w-4xl mx-auto">
@@ -196,7 +125,7 @@ const ParentPortal = () => {
             H-Pay family account
           </p>
           <h1 className="mb-2 text-3xl font-black tracking-tight text-white">Parent Portal</h1>
-          <p className="font-medium text-slate-400">Manage your children's school wallets and payments</p>
+          <p className="font-medium text-slate-400">View your children's school wallets, payments, and attendance</p>
         </div>
 
         {loading ? (
@@ -230,13 +159,7 @@ const ParentPortal = () => {
                     )}
                   </div>
                 </div>
-                <button 
-                  onClick={() => handleTopUp(student.rfid_uid, student.balance)}
-                  className="self-end rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-3 font-bold text-white shadow-lg shadow-blue-950/30 transition-all hover:from-blue-500 hover:to-cyan-400 md:self-auto"
-                >
-                  + Add Money
-                </button>
-                  </div>
+                </div>
                 </div>
                 <div className="mt-6 border-t border-white/10 pt-5">
                   <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">

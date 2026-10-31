@@ -22,17 +22,28 @@ const Attendance = () => {
       .channel("live-attendance")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "attendance" },
+        { event: "*", schema: "public", table: "attendance" },
         (payload) => {
-          const newEntry = payload.new;
-          // If the entry matches today/selected date, prepend it live
-          const entryDate = newEntry.date || (newEntry.timestamp ? newEntry.timestamp.split("T")[0] : "");
-          if (!selectedDate || entryDate === selectedDate) {
-            setAttendanceLogs((prev) => [newEntry, ...prev]);
-            toast.info(
-              `🔔 ${newEntry.student_name || "Student"} - ${
-                newEntry.type === "CHECK_IN" ? "Checked In" : "Checked Out"
-              }`
+          if (payload.eventType === "INSERT") {
+            const newEntry = payload.new;
+            const entryDate =
+              newEntry.date ||
+              (newEntry.timestamp ? newEntry.timestamp.split("T")[0] : "");
+            if (!selectedDate || entryDate === selectedDate) {
+              setAttendanceLogs((prev) => [newEntry, ...prev]);
+              toast.info(
+                `🔔 ${newEntry.student_name || "Student"} - ${
+                  newEntry.type === "CHECK_IN"
+                    ? "Checked In"
+                    : "Checked Out"
+                }`,
+              );
+            }
+          } else if (payload.eventType === "UPDATE") {
+            fetchAttendance();
+          } else if (payload.eventType === "DELETE") {
+            setAttendanceLogs((prev) =>
+              prev.filter((entry) => entry.id !== payload.old.id),
             );
           }
         }

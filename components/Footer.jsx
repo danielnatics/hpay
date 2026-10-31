@@ -69,7 +69,18 @@ const Footer = () => {
         </div>
 
         <div className="flex flex-col items-center justify-between gap-4 pt-7 text-xs text-slate-500 md:flex-row">
-          <p>© {year} HezTec. H-Pay is built for safer school commerce.</p>
+          <p>
+            © {year} H-Pay. Built by{" "}
+            <a
+              href="https://heztec.com"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-slate-300 transition-colors hover:text-cyan-300"
+            >
+              HezTec
+            </a>
+            {" "}for safer school commerce.
+          </p>
           <div className="flex gap-6">
             <a href="#" className="transition-colors hover:text-slate-200">Privacy</a>
             <a href="#" className="transition-colors hover:text-slate-200">Terms</a>
