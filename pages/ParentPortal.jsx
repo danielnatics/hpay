@@ -172,14 +172,14 @@ const ParentPortal = () => {
                       {(transactions[student.rfid_uid] || []).slice(0, 5).map((transaction) => {
                         const isPurchase = transaction.transaction_type === "PURCHASE";
                         return (
-                          <div key={transaction.id} className="flex items-center justify-between rounded-xl bg-black/10 px-3 py-2 text-sm">
-                            <div>
+                          <div key={transaction.id} className="flex items-start justify-between gap-3 rounded-xl bg-black/10 px-3 py-2 text-sm">
+                            <div className="min-w-0">
                               <p className="font-bold text-slate-200">{isPurchase ? "School purchase" : "Wallet deposit"}</p>
-                              <p className="text-xs text-slate-500">
+                              <p className="truncate text-xs text-slate-500">
                                 {new Date(transaction.created_at).toLocaleString()}
                               </p>
                             </div>
-                            <span className={`font-black ${isPurchase ? "text-rose-300" : "text-emerald-300"}`}>
+                            <span className={`shrink-0 font-black ${isPurchase ? "text-rose-300" : "text-emerald-300"}`}>
                               {isPurchase ? "-" : "+"}₦{Number(transaction.amount || 0).toLocaleString()}
                             </span>
                           </div>

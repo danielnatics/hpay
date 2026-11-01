@@ -75,14 +75,14 @@ const Transactions = () => {
   return (
     <div className="p-6 bg-slate-50 min-h-screen">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-black text-emerald-900">
               Financial Logs
             </h1>
             <p className="text-slate-500">History of all H-PAY activity</p>
             {/* Filter Buttons */}
-            <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm cursor-pointer">
+            <div className="mt-4 flex w-full max-w-full overflow-x-auto bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
               {["ALL", "DEPOSIT", "PURCHASE"].map((type) => (
                 <button
                   key={type}
@@ -101,7 +101,7 @@ const Transactions = () => {
 
           <button
             onClick={fetchTransactions}
-            className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-bold hover:bg-emerald-200 transition-all"
+            className="self-start whitespace-nowrap bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-bold hover:bg-emerald-200 transition-all"
           >
             🔄 Refresh
           </button>
@@ -110,8 +110,58 @@ const Transactions = () => {
         {/* {loading ? (
           <div className="text-center py-10">Loading transactions...</div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <table className="w-full text-left">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="divide-y divide-slate-100 md:hidden">
+              {filteredData.map((tx) => {
+                const isPurchase = tx.transaction_type === "PURCHASE";
+                return (
+                  <article key={tx.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h2 className="truncate font-bold text-slate-800">
+                          {tx.students?.name || "Unknown Student"}
+                        </h2>
+                        <p className="truncate font-mono text-[10px] uppercase text-slate-400">
+                          {tx.students?.rfid_uid || "No card ID"}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-black uppercase ${
+                          isPurchase
+                            ? "bg-red-100 text-red-600"
+                            : "bg-emerald-100 text-emerald-600"
+                        }`}
+                      >
+                        {tx.transaction_type}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex items-end justify-between gap-3">
+                      <time className="text-xs text-slate-500">
+                        {new Date(tx.created_at).toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true,
+                        })}
+                      </time>
+                      <span
+                        className={`shrink-0 text-base font-black ${
+                          isPurchase ? "text-red-600" : "text-emerald-600"
+                        }`}
+                      >
+                        {isPurchase ? "-" : "+"} ₦
+                        {Number(tx.amount || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[640px] text-left">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-xs font-black">
                 <tr>
                   <th className="px-6 py-4">Date & Time</th>
@@ -173,8 +223,58 @@ const Transactions = () => {
             Loading transactions...
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <table className="w-full text-left">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="divide-y divide-slate-100 md:hidden">
+              {filteredData.map((tx) => {
+                const isPurchase = tx.transaction_type === "PURCHASE";
+                return (
+                  <article key={tx.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h2 className="truncate font-bold text-slate-800">
+                          {tx.students?.name || "Unknown Student"}
+                        </h2>
+                        <p className="truncate font-mono text-[10px] uppercase text-slate-400">
+                          {tx.students?.rfid_uid || "No card ID"}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-black uppercase ${
+                          isPurchase
+                            ? "bg-red-100 text-red-600"
+                            : "bg-emerald-100 text-emerald-600"
+                        }`}
+                      >
+                        {tx.transaction_type}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex items-end justify-between gap-3">
+                      <time className="text-xs text-slate-500">
+                        {new Date(tx.created_at).toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true,
+                        })}
+                      </time>
+                      <span
+                        className={`shrink-0 text-base font-black ${
+                          isPurchase ? "text-red-600" : "text-emerald-600"
+                        }`}
+                      >
+                        {isPurchase ? "-" : "+"} ₦
+                        {Number(tx.amount || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[640px] text-left">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-xs font-black">
                 <tr>
                   <th className="px-6 py-4">Date & Time</th>
@@ -226,12 +326,13 @@ const Transactions = () => {
                       }`}
                     >
                       {tx.transaction_type === "PURCHASE" ? "-" : "+"} ₦
-                      {tx.amount.toLocaleString()}
+                      {Number(tx.amount || 0).toLocaleString()}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
 
             {filteredData.length === 0 && (
               <div className="p-10 text-center text-slate-400 font-medium">
