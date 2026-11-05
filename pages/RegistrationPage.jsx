@@ -20,6 +20,7 @@ const RegistrationPage = () => {
   const [studentName, setStudentName] = useState("");
   const [parentEmail, setParentEmail] = useState("");
   const [parentPhone, setParentPhone] = useState(""); // Independent state for easier clearing
+  const [studentPin, setStudentPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [client, setClient] = useState(null);
   const [connectStatus, setConnectStatus] = useState("Connecting...");
@@ -78,6 +79,14 @@ const RegistrationPage = () => {
   const createBootstrapPassword = () => {
     const bytes = crypto.getRandomValues(new Uint8Array(24));
     return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  };
+
+  const hashStudentPin = async (pin) => {
+    const bytes = new TextEncoder().encode(pin);
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(digest), (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("");
   };
 
   const today = new Date();
@@ -154,7 +163,8 @@ const RegistrationPage = () => {
       return;
     }
 
-    if (!studentData.name || !studentData.id || !parentEmail || !parentPhone) {
+    if (!studentData.name || !studentData.id || !parentEmail || !parentPhone ||
+        !/^\d{4}$/.test(studentPin)) {
       toast.warning("Please complete the student and parent details.");
       return;
     }
@@ -236,6 +246,7 @@ const RegistrationPage = () => {
       }
 
       // 2. SAVE STUDENT
+      const pinHash = await hashStudentPin(studentPin);
       const { error: studentError } = await supabase.from("students").insert([
         {
           name: studentData.name,
@@ -248,6 +259,7 @@ const RegistrationPage = () => {
           class: studentData.class,
           registration_date: formattedDate, // Your d/m/y format
           balance: 0, // New students always start at 0
+          pin_hash: pinHash,
         },
       ]);
 
@@ -289,6 +301,7 @@ const RegistrationPage = () => {
       setStudentData({ date: "", name: "", id: "", balance: "", rfid: "", gender: "", class: "" });
       setParentEmail("");
       setParentPhone("");
+      setStudentPin("");
     } catch (err) {
       console.error(err);
       toast.error(err.message || "An unexpected error occurred.");
@@ -334,6 +347,28 @@ const RegistrationPage = () => {
                   setStudentData({ ...studentData, name: e.target.value })
                 }
               />
+            </div>
+
+            <div className="space-y-1">
+              <label className="ml-1 text-xs font-bold uppercase text-slate-300">
+                Student Withdrawal PIN
+              </label>
+              <input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                maxLength={4}
+                required
+                placeholder="4 digits"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-mono tracking-[0.4em] text-white outline-none transition-all placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
+                value={studentPin}
+                onChange={(e) =>
+                  setStudentPin(e.target.value.replace(/\D/g, "").slice(0, 4))
+                }
+              />
+              <p className="text-[10px] text-slate-400">
+                Required to approve withdrawals on the POS terminal.
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
